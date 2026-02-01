@@ -1,0 +1,59 @@
+
+> technexus-volunteer-management@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.0.0.251:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 516ms
+[Cron Jobs] Initializing cron job scheduler...
+[Cron Jobs] Task reminder job scheduled: 50 11 * * * (5:20 PM IST / 11:50 AM UTC)
+ GET / 200 in 3.2s (compile: 3.0s, render: 249ms)
+Fetched: 6 tasks
+Attempting: 0 emails
+ GET /api/task-reminder 200 in 732ms (compile: 322ms, render: 410ms)
+ GET /tasks 200 in 92ms (compile: 72ms, render: 20ms)
+Sending Brevo email: {
+  "to": [
+    {
+      "email": "lekhashreeyc@gmail.com"
+    }
+  ],
+  "templateId": 1,
+  "params": {
+    "volunteers_name": "Lekhashree Y C \n",
+    "task_name": "youtube",
+    "due_date": "2026-02-13",
+    "TASK_ID": "265285b8-8430-41fa-a7c2-724f47805d6a",
+    "VOLUNTEER_ID": "a1593425-7413-46d8-aa3d-45b20829ad10"
+  }
+}
+Brevo email sent successfully: <202601311458.62281803058@smtp-relay.mailin.fr>
+ POST /api/assign-task 200 in 1882ms (compile: 32ms, render: 1850ms)
+✓ Compiled in 37ms
+[Cron Jobs] Initializing cron job scheduler...
+[Cron Jobs] Task reminder job scheduled: 50 11 * * * (5:20 PM IST / 11:50 AM UTC)
+ GET /tasks 200 in 108ms (compile: 47ms, render: 61ms)
+ GET /tasks 200 in 53ms (compile: 8ms, render: 45ms)
+ POST /api/assign-task 200 in 13.3s (compile: 28ms, render: 13.3s)
+ GET /tasks 200 in 86ms (compile: 4ms, render: 82ms)
+ POST /api/assign-task 200 in 1831ms (compile: 3ms, render: 1827ms)
+[Cron Jobs] Initializing cron job scheduler...
+[Cron Jobs] Task reminder job scheduled: 50 11 * * * (5:20 PM IST / 11:50 AM UTC)
+ GET / 200 in 168ms (compile: 39ms, render: 128ms)
+ GET /tasks 200 in 21ms (compile: 3ms, render: 18ms)
+ POST /api/assign-task 200 in 2.2s (compile: 4ms, render: 2.2s)
+ GET / 200 in 19ms (compile: 3ms, render: 16ms)
+ GET /volunteers 200 in 680ms (compile: 646ms, render: 34ms)
+ GET /volunteers 200 in 17ms (compile: 3ms, render: 14ms)
+ GET /tasks 200 in 31ms (compile: 2ms, render: 29ms)
+ POST /api/assign-task 200 in 3.5s (compile: 2ms, render: 3.5s)
+ GET /volunteers 200 in 73ms (compile: 9ms, render: 65ms)
+ GET /tasks 200 in 16ms (compile: 3ms, render: 13ms)
+ POST /api/assign-task 200 in 3.4s (compile: 3ms, render: 3.4s)
+ GET /volunteers 200 in 17ms (compile: 4ms, render: 13ms)
+ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+ GET /volunteers 200 in 18ms (compile: 4ms, render: 15ms)
