@@ -14,6 +14,7 @@ type Volunteer = {
   place: string;
   status: string;
   joining_date: string;
+  last_active_date?: string;
 };
 
 export default function VolunteersPage() {
@@ -41,7 +42,33 @@ export default function VolunteersPage() {
 
       if (error) throw error;
 
-      setVolunteers(data || []);
+      // Fetch last active date for each volunteer
+      const volunteersWithLastActive = await Promise.all(
+        (data || []).map(async (volunteer) => {
+          if (volunteer.status === 'Inactive') {
+            // Get the most recent task assignment date
+            const { data: lastAssignment, error: assignmentError } = await supabase
+              .from('task_assignments')
+              .select('assigned_at')
+              .eq('volunteer_id', volunteer.id)
+              .order('assigned_at', { ascending: false })
+              .limit(1);
+
+            // Use assignment date if available, otherwise use joining date
+            const lastActiveDate = lastAssignment && lastAssignment.length > 0 
+              ? lastAssignment[0].assigned_at 
+              : volunteer.joining_date;
+
+            return {
+              ...volunteer,
+              last_active_date: lastActiveDate
+            };
+          }
+          return volunteer;
+        })
+      );
+
+      setVolunteers(volunteersWithLastActive);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch volunteers');
     } finally {
@@ -164,6 +191,7 @@ export default function VolunteersPage() {
                     status={v.status}
                     joiningDate={v.joining_date}
                     email={v.email}
+                    lastActiveDate={v.last_active_date}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />

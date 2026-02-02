@@ -3,12 +3,14 @@
  * Fetches all pending tasks and sends reminder emails to assigned volunteers
  */
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { sendTaskReminderEmail } from '@/lib/brevo';
-import {
-  hasEmailBeenSentToday,
-  recordEmailSent
-} from '@/lib/email-tracking';
+
+// Use service role client for server-side operations
+const supabaseServiceRole = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface TaskReminderResult {
   taskId: number;
@@ -51,8 +53,11 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
   try {
     console.log('[Task Reminder Job] Starting scheduled task reminder job...');
 
+    // Get today's date for tracking
+    const today = new Date().toISOString().split('T')[0];
+
     // Fetch all pending tasks
-    const { data: pendingTasks, error: tasksError } = await supabase
+    const { data: pendingTasks, error: tasksError } = await supabaseServiceRole
       .from('tasks')
       .select('id, title, due_date, status')
       .eq('status', 'Pending');
@@ -86,7 +91,7 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
 
       try {
         // Fetch all volunteers assigned to this task
-        const { data: assignments, error: assignmentsError } = await supabase
+        const { data: assignments, error: assignmentsError } = await supabaseServiceRole
           .from('task_assignments')
           .select('volunteer_id')
           .eq('task_id', task.id);
@@ -113,13 +118,33 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
           continue;
         }
 
-        // Send reminder email to each assigned volunteer
+        // Check email tracking to prevent duplicates
+        const volunteerIds = assignments.map(a => a.volunteer_id);
+        const { data: sentToday, error: trackingError } = await supabaseServiceRole
+          .from('email_tracking')
+          .select('volunteer_id')
+          .eq('task_id', task.id)
+          .in('volunteer_id', volunteerIds)
+          .gte('email_sent_date', `${today}T00:00:00Z`)
+          .lt('email_sent_date', `${today}T23:59:59Z`);
+
+        if (trackingError) {
+          console.error(
+            `[Task Reminder Job] Error checking email tracking:`,
+            trackingError
+          );
+          // Continue anyway - better to send duplicate than skip
+        }
+
+        const sentTodaySet = new Set(sentToday?.map(s => s.volunteer_id) || []);
+
+        // Send reminder email to each assigned volunteer (if not sent today)
         for (const assignment of assignments) {
           const volunteerId = assignment.volunteer_id;
 
           try {
             // Check if email was already sent today
-            if (hasEmailBeenSentToday(task.id, volunteerId)) {
+            if (sentTodaySet.has(volunteerId)) {
               console.log(
                 `[Task Reminder Job] Email already sent today for task ${task.id}, volunteer ${volunteerId}`
               );
@@ -127,7 +152,7 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
             }
 
             // Fetch volunteer details
-            const { data: volunteer, error: volunteerError } = await supabase
+            const { data: volunteer, error: volunteerError } = await supabaseServiceRole
               .from('volunteers')
               .select('id, full_name, email')
               .eq('id', volunteerId)
@@ -137,6 +162,13 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
               throw new Error(
                 `Volunteer ${volunteerId} not found: ${volunteerError?.message}`
               );
+            }
+
+            if (!volunteer.email) {
+              console.log(
+                `[Task Reminder Job] Volunteer ${volunteerId} has no email address`
+              );
+              continue;
             }
 
             // Send the reminder email
@@ -150,8 +182,23 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
               1 // Use default template ID
             );
 
-            // Record that email was sent
-            recordEmailSent(task.id, volunteerId, messageId);
+            // Record in database that email was sent
+            const { error: insertError } = await supabaseServiceRole
+              .from('email_tracking')
+              .insert({
+                task_id: task.id,
+                volunteer_id: volunteerId,
+                email_sent_date: new Date().toISOString(),
+                brevo_message_id: messageId
+              });
+
+            if (insertError) {
+              console.error(
+                `[Task Reminder Job] Failed to record email tracking:`,
+                insertError
+              );
+              // Continue - email was sent successfully
+            }
 
             taskResult.emailsSent++;
             result.totalEmailsSent++;
@@ -168,7 +215,7 @@ export async function processPendingTaskReminders(): Promise<ScheduledJobResult>
             );
 
             // Get volunteer email for error record
-            const { data: volunteer } = await supabase
+            const { data: volunteer } = await supabaseServiceRole
               .from('volunteers')
               .select('email')
               .eq('id', volunteerId)

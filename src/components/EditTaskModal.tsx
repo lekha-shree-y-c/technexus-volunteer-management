@@ -70,6 +70,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
 
     const assigned = task.task_assignments?.map((ta: any) => ta.volunteers) || [];
     setAssignedVolunteers(assigned);
+    
+    // Initialize selectedVolunteers with currently assigned volunteer IDs
+    const assignedIds = assigned.map((v: Volunteer) => v.id);
+    setSelectedVolunteers(assignedIds);
   };
 
   const fetchAvailableVolunteers = async () => {
@@ -162,6 +166,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
   };
 
   const removeAssignedVolunteer = (id: string) => {
+    // Remove from both assignedVolunteers and selectedVolunteers
     setAssignedVolunteers(prev => prev.filter(v => v.id !== id));
     setSelectedVolunteers(prev => prev.filter(v => v !== id));
   };

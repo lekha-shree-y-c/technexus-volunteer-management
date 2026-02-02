@@ -9,6 +9,7 @@ interface VolunteerCardProps {
   status: string;
   joiningDate: string;
   email: string;
+  lastActiveDate?: string;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }
@@ -21,6 +22,7 @@ const VolunteerCard: React.FC<VolunteerCardProps> = ({
   status,
   joiningDate,
   email,
+  lastActiveDate,
   onEdit,
   onDelete,
 }) => {
@@ -53,6 +55,12 @@ const VolunteerCard: React.FC<VolunteerCardProps> = ({
           <Badge variant={status === 'Active' ? 'success' : 'default'}>
             {status}
           </Badge>
+          {/* Show Last Active date only for Inactive volunteers */}
+          {status === 'Inactive' && lastActiveDate && (
+            <p className="text-xs text-slate-500 mt-2">
+              Last Active: {new Date(lastActiveDate).toLocaleDateString()}
+            </p>
+          )}
         </div>
 
         {/* Details Section */}
