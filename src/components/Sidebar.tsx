@@ -4,10 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DashboardIcon, VolunteersIcon, TasksIcon } from "./Icons";
 import { useSidebar } from "@/context/SidebarContext";
+import { useEffect, useState } from "react";
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isOpen } = useSidebar();
+  const { isOpen, closeSidebar } = useSidebar();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const isActive = (path: string) => pathname === path;
 
@@ -29,21 +38,28 @@ export default function Sidebar() {
     },
   ];
 
+  const handleNavClick = () => {
+    if (isMobile) {
+      closeSidebar();
+    }
+  };
+
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && (
+      {/* Mobile overlay - only visible when sidebar is open on mobile */}
+      {isOpen && isMobile && (
         <div
-          className="fixed inset-0 bg-black/40 md:hidden z-30"
-          onClick={() => {
-            const event = new CustomEvent('toggleSidebar');
-            window.dispatchEvent(event);
-          }}
+          className="fixed inset-0 bg-black/40 md:hidden z-10"
+          onClick={() => closeSidebar()}
         />
       )}
+      {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-slate-900 border-r border-slate-700/50 shadow-lg flex flex-col transition-all duration-300 hidden md:flex ${
+        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-slate-900 border-r border-slate-700/50 shadow-lg flex flex-col transition-all duration-300 z-20 ${
           isOpen ? "w-64" : "w-24"
+        } ${
+          // On mobile: slide out of view when closed
+          isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"
         }`}
       >
       {/* Navigation Items */}
@@ -58,6 +74,7 @@ export default function Sidebar() {
               >
                 <Link
                   href={item.href}
+                  onClick={handleNavClick}
                   className={`flex items-center transition-all duration-150 relative group rounded-lg ${
                     isOpen ? "space-x-3 px-4 py-3" : "p-3"
                   } ${
