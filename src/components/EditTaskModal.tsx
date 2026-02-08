@@ -97,55 +97,30 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
     setError('');
 
     try {
-      // Update task
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          due_date: dueDate || null,
+      const response = await fetch('/api/update-task', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          title,
+          description,
+          due_date: dueDate,
           status,
+          volunteerIds: selectedVolunteers
         })
-        .eq('id', taskId);
+      });
 
-      if (taskError) throw taskError;
-
-      // Get current assignments
-      const { data: currentAssignments, error: assignError } = await supabase
-        .from('task_assignments')
-        .select('volunteer_id')
-        .eq('task_id', taskId);
-
-      if (assignError) throw assignError;
-
-      const currentVolunteerIds = currentAssignments?.map(a => a.volunteer_id) || [];
-      const newVolunteerIds = selectedVolunteers;
-
-      // Volunteers to add
-      const toAdd = newVolunteerIds.filter(id => !currentVolunteerIds.includes(id));
-      // Volunteers to remove
-      const toRemove = currentVolunteerIds.filter(id => !newVolunteerIds.includes(id));
-
-      // Add new assignments
-      if (toAdd.length > 0) {
-        const assignments = toAdd.map(volunteerId => ({
-          task_id: taskId,
-          volunteer_id: volunteerId,
-        }));
-        const { error: addError } = await supabase
-          .from('task_assignments')
-          .insert(assignments);
-        if (addError) throw addError;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update task');
       }
 
-      // Remove old assignments
-      if (toRemove.length > 0) {
-        const { error: removeError } = await supabase
-          .from('task_assignments')
-          .delete()
-          .eq('task_id', taskId)
-          .in('volunteer_id', toRemove);
-        if (removeError) throw removeError;
+      const data = await response.json();
+
+      if (data.emailsSent > 0) {
+        console.log(
+          `✅ Task updated. ${data.emailsSent} notification email(s) sent to assigned volunteers.`
+        );
       }
 
       onTaskUpdated();
