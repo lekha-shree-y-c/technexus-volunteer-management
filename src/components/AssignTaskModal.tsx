@@ -43,7 +43,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ isOpen, onClose, onTa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || selectedVolunteers.length === 0) return;
+    if (!title.trim() || !dueDate || selectedVolunteers.length === 0) return;
 
     setLoading(true);
     try {
@@ -120,13 +120,14 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ isOpen, onClose, onTa
         </div>
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-300 mb-2">
-            Due Date
+            Due Date <span className="text-red-400">*</span>
           </label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150"
+            required
           />
         </div>
         <div className="mb-6">
@@ -173,7 +174,7 @@ const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ isOpen, onClose, onTa
           </button>
           <button
             type="submit"
-            disabled={loading || !title.trim() || selectedVolunteers.length === 0}
+            disabled={loading || !title.trim() || !dueDate || selectedVolunteers.length === 0}
             className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:text-slate-500 text-white py-2 px-4 rounded-lg transition-colors duration-150 font-medium"
           >
             {loading ? 'Assigning...' : 'Assign Task'}

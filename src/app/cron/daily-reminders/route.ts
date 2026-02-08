@@ -48,7 +48,7 @@ async function sendDailyReminders() {
       volunteers!inner(id, full_name, email)
       `
     )
-    .not('tasks.status', 'ilike', 'completed');
+    .neq('tasks.status', 'Completed');
 
   if (queryError) {
     console.error('[Daily Reminders] Error fetching task assignments:', queryError);

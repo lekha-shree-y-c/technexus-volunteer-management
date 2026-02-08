@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import DashboardCards from "@/components/DashboardCards";
 
 type Metrics = {
   totalVolunteers: number;
@@ -34,25 +35,45 @@ export default function Dashboard() {
     try {
       // Fetch volunteers
       const { data: volunteers, error: volError } = await supabase
-        .from("volunteers")
-        .select("status");
+        .from('volunteers')
+        .select('status');
 
       if (volError) throw volError;
 
       const totalVolunteers = volunteers?.length || 0;
       const activeVolunteers = volunteers?.filter(v => v.status === 'Active').length || 0;
-      const inactiveVolunteers = totalVolunteers - activeVolunteers;
+      const inactiveVolunteers = volunteers?.filter(v => v.status === 'Inactive').length || 0;
 
       // Fetch tasks
       const { data: tasks, error: taskError } = await supabase
-        .from("tasks")
-        .select("status, due_date");
+        .from('tasks')
+        .select('status, due_date');
 
       if (taskError) throw taskError;
 
-      const pendingTasks = tasks?.filter(t => t.status === 'Pending').length || 0;
-      const completedTasks = tasks?.filter(t => t.status === 'Completed').length || 0;
-      const overdueTasks = tasks?.filter(t => t.status === 'Pending' && t.due_date && new Date(t.due_date) < new Date()).length || 0;
+      // Calculate task metrics with proper filtering
+      const now = new Date();
+      
+      // Pending: not completed AND due date not passed
+      const pendingTasks = (tasks || []).filter((task) => {
+        const isNotCompleted = task.status !== 'Completed';
+        const dueDate = task.due_date ? new Date(task.due_date) : null;
+        const notOverdue = dueDate ? dueDate >= now : true;
+        return isNotCompleted && notOverdue;
+      }).length;
+
+      // Completed: marked as completed
+      const completedTasks = (tasks || []).filter(
+        (task) => task.status === 'Completed'
+      ).length;
+
+      // Overdue: not completed AND due date has passed
+      const overdueTasks = (tasks || []).filter((task) => {
+        const isNotCompleted = task.status !== 'Completed';
+        const dueDate = task.due_date ? new Date(task.due_date) : null;
+        const isPastDue = dueDate ? dueDate < now : false;
+        return isNotCompleted && isPastDue;
+      }).length;
 
       setMetrics({
         totalVolunteers,
@@ -63,6 +84,7 @@ export default function Dashboard() {
         overdueTasks,
       });
     } catch (err) {
+      console.error('Error fetching metrics:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch metrics');
     } finally {
       setLoading(false);
@@ -70,51 +92,35 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto p-3 sm:p-6">
+    <div className="min-h-screen bg-slate-900 p-4 sm:p-8">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-1 sm:mb-2">
-            Dashboard
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+            Volunteer Dashboard
           </h1>
-          <p className="text-sm sm:text-base text-slate-400">Overview of your volunteer community</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-700/50 text-red-300 rounded-lg text-sm sm:text-base">
-            Error: {error}
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={fetchMetrics}
+              className="ml-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
+            >
+              Retry
+            </button>
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center text-slate-400 py-12">Loading dashboard...</div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Total Volunteers</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-blue-400">{metrics.totalVolunteers}</p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Active Volunteers</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-green-400">{metrics.activeVolunteers}</p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Inactive Volunteers</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-slate-400">{metrics.inactiveVolunteers}</p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Pending Tasks</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-yellow-400">{metrics.pendingTasks}</p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Completed Tasks</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-green-400">{metrics.completedTasks}</p>
-            </div>
-            <div className="bg-slate-800/50 border border-slate-700/50 p-4 sm:p-6 rounded-xl hover:shadow-md transition-all duration-150">
-              <h3 className="text-xs sm:text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide">Overdue Tasks</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-red-400">{metrics.overdueTasks}</p>
-            </div>
-          </div>
-        )}
+        <DashboardCards
+          totalVolunteers={metrics.totalVolunteers}
+          activeVolunteers={metrics.activeVolunteers}
+          inactiveVolunteers={metrics.inactiveVolunteers}
+          pendingTasks={metrics.pendingTasks}
+          completedTasks={metrics.completedTasks}
+          overdueTasks={metrics.overdueTasks}
+          loading={loading}
+        />
       </div>
     </div>
   );

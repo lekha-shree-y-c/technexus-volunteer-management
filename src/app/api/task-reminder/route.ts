@@ -64,7 +64,7 @@ async function sendTaskReminders() {
   const today = new Date().toISOString().split('T')[0];
 
   // Step 1: Find all incomplete tasks with their assignments and volunteer emails
-  // Only fetch tasks where status is NOT 'completed'
+  // Only fetch tasks where status is NOT 'Completed'
   const { data: taskAssignments, error: queryError } = await supabaseServiceRole
     .from('task_assignments')
     .select(
@@ -75,7 +75,7 @@ async function sendTaskReminders() {
       volunteers!inner(id, full_name, email)
       `
     )
-    .neq('tasks.status', 'completed');
+    .neq('tasks.status', 'Completed');
 
   if (queryError) {
     console.error('Error fetching task assignments:', queryError);
