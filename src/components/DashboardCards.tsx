@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Users, UserCheck, UserX, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import DashboardCard from './DashboardCard';
 import TaskListModal from './TaskListModal';
 import VolunteerListModal from './VolunteerListModal';
@@ -43,7 +44,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Total Volunteers"
           value={totalVolunteers}
-          icon={<span className="text-2xl">👥</span>}
+          icon={<Users className="w-6 h-6" />}
           color="blue"
           isClickable={false}
           description="All registered volunteers"
@@ -53,7 +54,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Active Volunteers"
           value={activeVolunteers}
-          icon={<span className="text-2xl">✅</span>}
+          icon={<UserCheck className="w-6 h-6" />}
           color="green"
           isClickable={true}
           onClick={() => setOpenModal('active')}
@@ -64,7 +65,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Inactive Volunteers"
           value={inactiveVolunteers}
-          icon={<span className="text-2xl">⏸️</span>}
+          icon={<UserX className="w-6 h-6" />}
           color="orange"
           isClickable={true}
           onClick={() => setOpenModal('inactive')}
@@ -75,7 +76,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Pending Tasks"
           value={pendingTasks}
-          icon={<span className="text-2xl">⏳</span>}
+          icon={<Clock className="w-6 h-6" />}
           color="purple"
           isClickable={true}
           onClick={() => setOpenModal('pending')}
@@ -86,7 +87,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Completed Tasks"
           value={completedTasks}
-          icon={<span className="text-2xl">✨</span>}
+          icon={<CheckCircle className="w-6 h-6" />}
           color="cyan"
           isClickable={true}
           onClick={() => setOpenModal('completed')}
@@ -97,7 +98,7 @@ const DashboardCards: React.FC<DashboardCardsProps> = ({
         <DashboardCard
           title="Overdue Tasks"
           value={overdueTasks}
-          icon={<span className="text-2xl">⚠️</span>}
+          icon={<AlertCircle className="w-6 h-6" />}
           color="red"
           isClickable={true}
           onClick={() => setOpenModal('overdue')}

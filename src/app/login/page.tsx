@@ -40,13 +40,13 @@ export default function AdminLoginPage() {
   return (
     <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center overflow-hidden">
       {/* Animated Background Decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
       </div>
 
       {/* Form Container */}
-      <div className="relative z-10 w-full max-w-sm px-4 sm:px-6">
+      <div className="relative w-full max-w-sm px-4 sm:px-6">
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-5 sm:p-6">
           {/* Header */}
           <div className="mb-5 text-center">

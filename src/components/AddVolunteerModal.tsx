@@ -15,6 +15,7 @@ const AddVolunteerModal: React.FC<AddVolunteerModalProps> = ({ isOpen, onClose, 
   const [role, setRole] = useState('');
   const [place, setPlace] = useState('');
   const [status, setStatus] = useState('Active');
+  const [joiningDate, setJoiningDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,7 +35,7 @@ const AddVolunteerModal: React.FC<AddVolunteerModalProps> = ({ isOpen, onClose, 
           role: role.trim(),
           place: place.trim(),
           status: status,
-          joining_date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+          joining_date: joiningDate,
         }]);
 
       if (error) throw error;
@@ -44,6 +45,7 @@ const AddVolunteerModal: React.FC<AddVolunteerModalProps> = ({ isOpen, onClose, 
       setRole('');
       setPlace('');
       setStatus('Active');
+      setJoiningDate(new Date().toISOString().split('T')[0]);
       onVolunteerAdded();
       onClose();
     } catch (err) {
@@ -104,7 +106,7 @@ const AddVolunteerModal: React.FC<AddVolunteerModalProps> = ({ isOpen, onClose, 
             required
           />
         </div>
-        <div className="mb-6">
+        <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-300 mb-2">
             Status
           </label>
@@ -116,6 +118,18 @@ const AddVolunteerModal: React.FC<AddVolunteerModalProps> = ({ isOpen, onClose, 
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
           </select>
+        </div>
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-slate-300 mb-2">
+            Joining Date
+          </label>
+          <input
+            type="date"
+            value={joiningDate}
+            onChange={(e) => setJoiningDate(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150"
+            required
+          />
         </div>
         {error && (
           <div className="mb-4 p-3 bg-red-600/20 border border-red-600/50 text-red-300 rounded-lg text-sm">

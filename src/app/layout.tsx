@@ -6,6 +6,13 @@ import MainContent from "@/components/MainContent";
 import { BackgroundJobsInitializer } from "@/components/BackgroundJobsInitializer";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthLoadingScreen from "@/components/AuthLoadingScreen";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Volunteer Management System",
+  description: "Manage volunteers and tasks efficiently",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
+};
 
 export default function RootLayout({
   children,
