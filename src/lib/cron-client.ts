@@ -89,8 +89,7 @@ export async function triggerReminders(
             'Content-Type': 'application/json',
             'User-Agent': 'CronClient/1.0'
           },
-          signal: controller.signal,
-          timeout
+          signal: controller.signal
         });
 
         clearTimeout(timeoutId);
@@ -175,8 +174,7 @@ export async function triggerRemindersSimple(
 ): Promise<CronEndpointResponse> {
   const response = await fetch(`${url}?secret=${encodeURIComponent(secret)}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    timeout: 60000
+    headers: { 'Content-Type': 'application/json' }
   });
 
   if (!response.ok) {
