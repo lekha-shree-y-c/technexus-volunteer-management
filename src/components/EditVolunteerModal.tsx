@@ -30,7 +30,7 @@ const EditVolunteerModal: React.FC<EditVolunteerModalProps> = ({ isOpen, onClose
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (volunteer && formData.full_name && formData.email && formData.role && formData.place && formData.status) {
+    if (volunteer && formData.full_name && formData.email && formData.role && formData.place && formData.joining_date && formData.status) {
       onSave({ ...volunteer, ...formData } as Volunteer);
       onClose();
     }
@@ -87,6 +87,16 @@ const EditVolunteerModal: React.FC<EditVolunteerModalProps> = ({ isOpen, onClose
             value={formData.place || ''}
             onChange={(e) => handleChange('place', e.target.value)}
             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-slate-300 mb-2">Joining Date</label>
+          <input
+            type="date"
+            value={formData.joining_date || ''}
+            onChange={(e) => handleChange('joining_date', e.target.value)}
+            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150"
             required
           />
         </div>
