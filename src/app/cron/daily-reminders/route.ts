@@ -59,60 +59,47 @@ async function sendOverdueTaskAlertEmail(
 ): Promise<string> {
   const subject = 'Overdue Task Alert';
   
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #d32f2f; color: white; padding: 20px; border-radius: 5px; }
-        .content { background-color: #f5f5f5; padding: 20px; margin-top: 20px; border-radius: 5px; }
-        .alert-box { background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 15px 0; }
-        .info-row { margin: 10px 0; padding: 10px; background-color: white; border-radius: 3px; }
-        .label { font-weight: bold; color: #d32f2f; }
-        .footer { margin-top: 30px; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h2>⚠️ Overdue Task Alert</h2>
-        </div>
-        
-        <div class="content">
-          <p>Hello Admin,</p>
-          
-          <p>The following task is <strong>OVERDUE</strong> and still incomplete:</p>
-          
-          <div class="alert-box">
-            <div class="info-row">
-              <span class="label">Task:</span> ${taskTitle}
-            </div>
-            <div class="info-row">
-              <span class="label">Assigned Volunteer:</span> ${volunteerName}
-            </div>
-            <div class="info-row">
-              <span class="label">Email:</span> <a href="mailto:${volunteerEmail}">${volunteerEmail}</a>
-            </div>
-            <div class="info-row">
-              <span class="label">Due Date:</span> ${dueDate}
-            </div>
-          </div>
-          
-          <p>This task was expected to be completed by <strong>${dueDate}</strong> but remains incomplete.</p>
-          
-          <p>Please follow up with the assigned volunteer to ensure timely completion.</p>
-        </div>
-        
-        <div class="footer">
-          <p>This is an automated message from the Volunteer Management System.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background-color: #d32f2f; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+.header h2 { margin: 0; }
+.content { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+.alert-box { background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 15px 0; }
+.info-row { margin: 10px 0; padding: 10px; background-color: white; border-radius: 3px; }
+.label { font-weight: bold; color: #d32f2f; display: inline-block; width: 120px; }
+.footer { color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; }
+a { color: #d32f2f; text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h2>⚠️ Overdue Task Alert</h2>
+</div>
+<div class="content">
+<p>Hello Admin,</p>
+<p>The following task is <strong>OVERDUE</strong> and still incomplete:</p>
+<div class="alert-box">
+<div class="info-row"><span class="label">Task:</span> ${taskTitle}</div>
+<div class="info-row"><span class="label">Volunteer:</span> ${volunteerName}</div>
+<div class="info-row"><span class="label">Email:</span> <a href="mailto:${volunteerEmail}">${volunteerEmail}</a></div>
+<div class="info-row"><span class="label">Due Date:</span> ${dueDate}</div>
+</div>
+<p>This task was expected to be completed by <strong>${dueDate}</strong> but remains incomplete.</p>
+<p>Please follow up with the assigned volunteer to ensure timely completion.</p>
+</div>
+<div class="footer">
+<p>This is an automated message from the Volunteer Management System.</p>
+</div>
+</div>
+</body>
+</html>`;
 
   return sendBrevoEmailWithHtml(adminEmail, subject, htmlContent);
 }
@@ -211,7 +198,6 @@ async function sendDailyReminders() {
   await ensureOverdueAlertsTableExists();
 
   const today = new Date().toISOString().split('T')[0];
-  const currentDate = new Date();
   let reminderEmailsSent = 0;
   let overdueAlertsSent = 0;
 
@@ -321,16 +307,32 @@ async function sendDailyReminders() {
   if (incompleteQueryError) {
     console.error('[Daily Reminders] Error fetching incomplete assignments for overdue check:', incompleteQueryError);
   } else if (allIncompleteAssignments && allIncompleteAssignments.length > 0) {
+    console.log(`[Daily Reminders] Found ${allIncompleteAssignments.length} incomplete task assignments`);
+
     // Filter for overdue tasks (past due date and not completed)
     const overdueAssignments = allIncompleteAssignments.filter((assignment) => {
       const task = assignment.tasks as any;
-      if (!task.due_date) return false; // Only consider tasks with a due date
+      if (!task.due_date) {
+        console.log(`[Daily Reminders] Task ${task.id} has no due_date, skipping`);
+        return false;
+      }
 
-      const dueDate = new Date(task.due_date);
-      dueDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+      // Parse the due date more reliably
+      const dueDateObj = new Date(task.due_date);
       
-      return currentDate > dueDate; // Task is overdue if today is past the due date
+      // Get today's date in YYYY-MM-DD format for comparison
+      const todayString = new Date().toISOString().split('T')[0];
+      const dueDateString = new Date(task.due_date).toISOString().split('T')[0];
+      
+      // A task is overdue if its due date is BEFORE today
+      const isOverdue = dueDateString < todayString;
+      
+      console.log(`[Daily Reminders] Task ${task.id} (${task.title}): due_date=${task.due_date}, dueDateString=${dueDateString}, todayString=${todayString}, isOverdue=${isOverdue}`);
+      
+      return isOverdue;
     });
+
+    console.log(`[Daily Reminders] Filtered to ${overdueAssignments.length} overdue assignments`);
 
     // Send overdue alerts to each admin for each overdue task
     for (const assignment of overdueAssignments) {
