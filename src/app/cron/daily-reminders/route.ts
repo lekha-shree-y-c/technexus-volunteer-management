@@ -304,10 +304,21 @@ async function sendDailyReminders() {
     )
     .neq('tasks.status', 'Completed');
 
+  console.log(`[Daily Reminders] Query for incomplete tasks - Error: ${incompleteQueryError ? JSON.stringify(incompleteQueryError) : 'null'}, Data count: ${allIncompleteAssignments ? allIncompleteAssignments.length : 0}`);
+
   if (incompleteQueryError) {
     console.error('[Daily Reminders] Error fetching incomplete assignments for overdue check:', incompleteQueryError);
-  } else if (allIncompleteAssignments && allIncompleteAssignments.length > 0) {
+  } else if (!allIncompleteAssignments || allIncompleteAssignments.length === 0) {
+    console.log('[Daily Reminders] No incomplete task assignments found');
+  } else {
     console.log(`[Daily Reminders] Found ${allIncompleteAssignments.length} incomplete task assignments`);
+    
+    // Log all incomplete tasks for debugging
+    allIncompleteAssignments.forEach((a) => {
+      const task = a.tasks as any;
+      const volunteer = a.volunteers as any;
+      console.log(`[Daily Reminders] Assignment - Task: ${task.title} (ID: ${task.id}), Status: '${task.status}', Due: ${task.due_date}, Volunteer: ${volunteer.full_name}`);
+    });
 
     // Filter for overdue tasks (past due date and not completed)
     const overdueAssignments = allIncompleteAssignments.filter((assignment) => {
@@ -317,17 +328,21 @@ async function sendDailyReminders() {
         return false;
       }
 
-      // Parse the due date more reliably
-      const dueDateObj = new Date(task.due_date);
+      // Convert due_date string directly to YYYY-MM-DD format without Date object
+      let dueDateString = task.due_date;
       
-      // Get today's date in YYYY-MM-DD format for comparison
+      // If it's a full ISO string like "2026-02-01T00:00:00", extract just the date part
+      if (typeof dueDateString === 'string' && dueDateString.includes('T')) {
+        dueDateString = dueDateString.split('T')[0];
+      }
+      
+      // Get today's date in YYYY-MM-DD format
       const todayString = new Date().toISOString().split('T')[0];
-      const dueDateString = new Date(task.due_date).toISOString().split('T')[0];
       
-      // A task is overdue if its due date is BEFORE today
+      // String comparison works correctly for YYYY-MM-DD format
       const isOverdue = dueDateString < todayString;
       
-      console.log(`[Daily Reminders] Task ${task.id} (${task.title}): due_date=${task.due_date}, dueDateString=${dueDateString}, todayString=${todayString}, isOverdue=${isOverdue}`);
+      console.log(`[Daily Reminders] Task ${task.id} (${task.title}): status='${task.status}', due_date='${task.due_date}', dueDateString='${dueDateString}', todayString='${todayString}', isOverdue=${isOverdue}`);
       
       return isOverdue;
     });

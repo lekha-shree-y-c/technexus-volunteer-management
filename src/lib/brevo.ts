@@ -135,12 +135,14 @@ export async function sendVolunteerReminderEmail(
  * @param email - Recipient email address
  * @param subject - Email subject line
  * @param htmlContent - HTML email body
+ * @param fromEmail - Sender email address (optional, defaults to BREVO_SENDER_EMAIL)
  * @returns Message ID from Brevo
  */
 export async function sendBrevoEmailWithHtml(
   email: string,
   subject: string,
-  htmlContent: string
+  htmlContent: string,
+  fromEmail?: string
 ): Promise<string> {
   const apiKey = process.env.BREVO_API_KEY;
 
@@ -148,8 +150,15 @@ export async function sendBrevoEmailWithHtml(
     throw new Error('BREVO_API_KEY environment variable is not set');
   }
 
+  // Use provided email or fall back to env variable or default
+  const senderEmail = fromEmail || process.env.BREVO_SENDER_EMAIL || 'noreply@volunteerapp.com';
+
   const payload = {
     to: [{ email }],
+    from: {
+      email: senderEmail,
+      name: 'Volunteer Management System'
+    },
     subject,
     htmlContent
   };
