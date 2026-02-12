@@ -97,3 +97,36 @@ export async function sendTaskReminderEmail(
 
   return sendBrevoEmail(templateId, volunteerEmail, params);
 }
+
+/**
+ * Send a reminder email listing multiple incomplete tasks for a volunteer
+ * @param volunteerEmail - Recipient email address
+ * @param volunteerName - Volunteer full name
+ * @param tasks - Incomplete tasks to include in the reminder
+ * @param templateId - Brevo template ID (default: BREVO_REMINDER_TEMPLATE_ID or 1)
+ * @returns Message ID from Brevo
+ */
+export async function sendVolunteerReminderEmail(
+  volunteerEmail: string,
+  volunteerName: string,
+  tasks: Array<{ id: string | number; title: string; due_date?: string | null }>,
+  templateId: number = Number(process.env.BREVO_REMINDER_TEMPLATE_ID || 1)
+): Promise<string> {
+  const taskList = tasks
+    .map((task) => {
+      const dueDate = task.due_date ? ` (Due: ${task.due_date})` : '';
+      return `- ${task.title}${dueDate}`;
+    })
+    .join('\n');
+
+  const params = {
+    volunteer_name: volunteerName,
+    task_count: tasks.length,
+    task_list: taskList,
+    VOLUNTEER_NAME: volunteerName,
+    TASK_COUNT: tasks.length,
+    TASK_LIST: taskList
+  };
+
+  return sendBrevoEmail(templateId, volunteerEmail, params);
+}
