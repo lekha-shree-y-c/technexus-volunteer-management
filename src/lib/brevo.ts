@@ -130,3 +130,47 @@ export async function sendVolunteerReminderEmail(
 
   return sendBrevoEmail(templateId, volunteerEmail, params);
 }
+/**
+ * Send an email with custom HTML content (without using a template)
+ * @param email - Recipient email address
+ * @param subject - Email subject line
+ * @param htmlContent - HTML email body
+ * @returns Message ID from Brevo
+ */
+export async function sendBrevoEmailWithHtml(
+  email: string,
+  subject: string,
+  htmlContent: string
+): Promise<string> {
+  const apiKey = process.env.BREVO_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY environment variable is not set');
+  }
+
+  const payload = {
+    to: [{ email }],
+    subject,
+    htmlContent
+  };
+
+  const response = await fetch(`${BREVO_API_BASE_URL}/smtp/email`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      `Brevo API error: ${response.status} - ${JSON.stringify(errorData)}`
+    );
+  }
+
+  const data = (await response.json()) as BrevoEmailResponse;
+  return data.messageId;
+}
