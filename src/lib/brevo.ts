@@ -15,6 +15,12 @@ interface BrevoEmailResponse {
   messageId: string;
 }
 
+interface BrevoHtmlEmailPayload {
+  to: Array<{ email: string }>;
+  subject: string;
+  htmlContent: string;
+}
+
 /**
  * Send a transactional email using Brevo API
  * @param templateId - Brevo template ID
@@ -96,4 +102,49 @@ export async function sendTaskReminderEmail(
   };
 
   return sendBrevoEmail(templateId, volunteerEmail, params);
+}
+
+/**
+ * Send a raw HTML email using Brevo API
+ * @param email - Recipient email address
+ * @param subject - Email subject
+ * @param htmlContent - HTML body content
+ * @returns Message ID from Brevo
+ */
+export async function sendBrevoEmailWithHtml(
+  email: string,
+  subject: string,
+  htmlContent: string
+): Promise<string> {
+  const apiKey = process.env.BREVO_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY environment variable is not set');
+  }
+
+  const payload: BrevoHtmlEmailPayload = {
+    to: [{ email }],
+    subject,
+    htmlContent
+  };
+
+  const response = await fetch(`${BREVO_API_BASE_URL}/smtp/email`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      `Brevo API error: ${response.status} - ${JSON.stringify(errorData)}`
+    );
+  }
+
+  const data = (await response.json()) as BrevoEmailResponse;
+  return data.messageId;
 }
