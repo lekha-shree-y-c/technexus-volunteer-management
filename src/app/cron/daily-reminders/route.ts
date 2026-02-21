@@ -5,9 +5,9 @@
  * Protected with ?key=CRON_SECRET.
  * 
  * Features:
- * - Sends reminder emails to volunteers for incomplete tasks
- * - Sends overdue task alerts to admins for incomplete, past-due tasks
- * - Prevents duplicate emails using tracking tables
+ * - Sends reminder emails to volunteers for incomplete tasks (via Brevo)
+ * - Sends overdue task alerts to admins (via Brevo)
+ * - Prevents duplicate emails/alerts using tracking tables
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -42,69 +42,6 @@ const supabaseServiceRole = createClient(
 );
 
 /**
- * Send overdue task alert email to admins with inline HTML content
- * @param taskTitle - Task title
- * @param volunteerName - Assigned volunteer's name
- * @param volunteerEmail - Assigned volunteer's email
- * @param dueDate - Task due date
- * @param adminEmail - Admin email address
- * @returns Message ID from Brevo
- */
-async function sendOverdueTaskAlertEmail(
-  taskTitle: string,
-  volunteerName: string,
-  volunteerEmail: string,
-  dueDate: string,
-  adminEmail: string
-): Promise<string> {
-  const subject = 'Overdue Task Alert';
-  
-  const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>
-body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-.container { max-width: 600px; margin: 0 auto; padding: 20px; }
-.header { background-color: #d32f2f; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-.header h2 { margin: 0; }
-.content { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-.alert-box { background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 15px 0; }
-.info-row { margin: 10px 0; padding: 10px; background-color: white; border-radius: 3px; }
-.label { font-weight: bold; color: #d32f2f; display: inline-block; width: 120px; }
-.footer { color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; }
-a { color: #d32f2f; text-decoration: none; }
-a:hover { text-decoration: underline; }
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header">
-<h2>⚠️ Overdue Task Alert</h2>
-</div>
-<div class="content">
-<p>Hello Admin,</p>
-<p>The following task is <strong>OVERDUE</strong> and still incomplete:</p>
-<div class="alert-box">
-<div class="info-row"><span class="label">Task:</span> ${taskTitle}</div>
-<div class="info-row"><span class="label">Volunteer:</span> ${volunteerName}</div>
-<div class="info-row"><span class="label">Email:</span> <a href="mailto:${volunteerEmail}">${volunteerEmail}</a></div>
-<div class="info-row"><span class="label">Due Date:</span> ${dueDate}</div>
-</div>
-<p>This task was expected to be completed by <strong>${dueDate}</strong> but remains incomplete.</p>
-<p>Please follow up with the assigned volunteer to ensure timely completion.</p>
-</div>
-<div class="footer">
-<p>This is an automated message from the Volunteer Management System.</p>
-</div>
-</div>
-</body>
-</html>`;
-
-  return sendBrevoEmailWithHtml(adminEmail, subject, htmlContent);
-}
-
-/**
  * Ensure overdue_admin_alerts tracking table exists
  * Creates it if it doesn't exist yet
  */
@@ -135,6 +72,8 @@ async function hasOverdueAlertBeenSent(
   volunteerId: number | string
 ): Promise<boolean> {
   try {
+    console.log(`[Daily Reminders] Checking if alert already sent for task ${taskId}, volunteer ${volunteerId}`);
+    
     const { data, error } = await supabaseServiceRole
       .from('overdue_admin_alerts')
       .select('id')
@@ -145,17 +84,22 @@ async function hasOverdueAlertBeenSent(
 
     if (error && error.code === 'PGRST116') {
       // Table doesn't exist yet, return false
+      console.log('[Daily Reminders] Table overdue_admin_alerts does not exist yet');
       return false;
     }
 
     if (error) {
       console.error('[Daily Reminders] Error checking overdue alert status:', error);
+      // Don't block email sending if check fails
       return false;
     }
 
-    return data && data.length > 0;
+    const alreadySent = data && data.length > 0;
+    console.log(`[Daily Reminders] Alert already sent: ${alreadySent}`);
+    return alreadySent;
   } catch (err) {
     console.error('[Daily Reminders] Exception checking overdue alert:', err);
+    // Don't block email sending if check fails
     return false;
   }
 }
@@ -169,6 +113,8 @@ async function recordOverdueAlertSent(
   adminEmail: string
 ): Promise<void> {
   try {
+    console.log(`[Daily Reminders] Recording alert sent for task ${taskId}, volunteer ${volunteerId}, admin ${adminEmail}`);
+    
     const { error } = await supabaseServiceRole
       .from('overdue_admin_alerts')
       .insert({
@@ -187,6 +133,8 @@ async function recordOverdueAlertSent(
 
     if (error) {
       console.error('[Daily Reminders] Error recording overdue alert:', error);
+    } else {
+      console.log(`[Daily Reminders] Successfully recorded alert for task ${taskId}`);
     }
   } catch (err) {
     console.error('[Daily Reminders] Exception recording overdue alert:', err);
@@ -366,23 +314,70 @@ async function sendDailyReminders() {
         // Send alert to each admin
         for (const adminEmail of ADMIN_EMAILS) {
           try {
-            const messageId = await sendOverdueTaskAlertEmail(
-              task.title,
-              volunteer.full_name,
-              volunteer.email,
-              task.due_date,
-              adminEmail
+            console.log(`[Daily Reminders] Sending overdue alert to ${adminEmail} for task ${task.id}...`);
+            
+            // Create HTML email content
+            const subject = '⚠️ Overdue Task Alert';
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+.header { background-color: #d32f2f; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+.header h2 { margin: 0; }
+.content { background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+.alert-box { background-color: #ffebee; border-left: 4px solid #d32f2f; padding: 15px; margin: 15px 0; }
+.info-row { margin: 10px 0; padding: 10px; background-color: white; border-radius: 3px; }
+.label { font-weight: bold; color: #d32f2f; display: inline-block; width: 120px; }
+.footer { color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; }
+a { color: #d32f2f; text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h2>⚠️ Overdue Task Alert</h2>
+</div>
+<div class="content">
+<p>Hello Admin,</p>
+<p>The following task is <strong>OVERDUE</strong> and still incomplete:</p>
+<div class="alert-box">
+<div class="info-row"><span class="label">Task:</span> ${task.title}</div>
+<div class="info-row"><span class="label">Volunteer:</span> ${volunteer.full_name}</div>
+<div class="info-row"><span class="label">Email:</span> <a href="mailto:${volunteer.email}">${volunteer.email}</a></div>
+<div class="info-row"><span class="label">Due Date:</span> ${task.due_date}</div>
+</div>
+<p>This task was expected to be completed by <strong>${task.due_date}</strong> but remains incomplete.</p>
+<p>Please follow up with the assigned volunteer to ensure timely completion.</p>
+</div>
+<div class="footer">
+<p>This is an automated message from the Volunteer Management System.</p>
+</div>
+</div>
+</body>
+</html>
+            `;
+            
+            // Send email via Brevo
+            const messageId = await sendBrevoEmailWithHtml(
+              adminEmail,
+              subject,
+              htmlContent
             );
 
-            console.log(`[Daily Reminders] Overdue alert sent to ${adminEmail} for task ${task.id}, volunteer ${volunteer.id}`);
-
+            console.log(`[Daily Reminders] ✅ Overdue alert sent to ${adminEmail} (Message ID: ${messageId})`);
+            
             // Record that alert was sent
             await recordOverdueAlertSent(task.id, volunteer.id, adminEmail);
             overdueAlertsSent++;
-          } catch (adminEmailError) {
-            const err = adminEmailError as Error;
+          } catch (adminAlertError) {
+            const err = adminAlertError as Error;
             console.error(
-              `[Daily Reminders] Error sending overdue alert to ${adminEmail}: ${err.message}`
+              `[Daily Reminders] ❌ Error sending overdue alert to ${adminEmail}: ${err.message}`
             );
           }
         }
