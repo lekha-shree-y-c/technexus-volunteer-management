@@ -49,6 +49,22 @@ interface EmailTrackingRecord {
   email_sent_date: string;
 }
 
+interface TaskAssignmentRecord {
+  task_id: string;
+  volunteer_id: string;
+  tasks: {
+    id: string;
+    title: string;
+    status: string;
+    due_date: string | null;
+  };
+  volunteers: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
+}
+
 /**
  * Sends task reminder emails to volunteers with incomplete task assignments
  * - Only sends one email per task per volunteer per day
@@ -64,7 +80,7 @@ async function sendTaskReminders() {
   const today = new Date().toISOString().split('T')[0];
 
   // Step 1: Find all incomplete tasks with their assignments and volunteer emails
-  // Only fetch tasks where status is NOT 'completed'
+  // Only fetch tasks where status is NOT 'Completed'
   const { data: taskAssignments, error: queryError } = await supabaseServiceRole
     .from('task_assignments')
     .select(
@@ -75,17 +91,20 @@ async function sendTaskReminders() {
       volunteers!inner(id, full_name, email)
       `
     )
-    .neq('tasks.status', 'completed');
+    .neq('tasks.status', 'Completed');
 
   if (queryError) {
     console.error('Error fetching task assignments:', queryError);
     throw new Error('Failed to fetch task assignments');
   }
 
-  const numTasksFetched = taskAssignments?.length || 0;
+  const typedTaskAssignments =
+    ((taskAssignments ?? []) as unknown as TaskAssignmentRecord[]);
+
+  const numTasksFetched = typedTaskAssignments.length;
   console.log(`Fetched: ${numTasksFetched} tasks`);
 
-  if (!taskAssignments || taskAssignments.length === 0) {
+  if (typedTaskAssignments.length === 0) {
     return {
       success: true,
       message: 'No incomplete task assignments found',
@@ -95,9 +114,9 @@ async function sendTaskReminders() {
   }
 
   // Step 2: Check email tracking to avoid duplicate emails on the same day
-  const taskVolunteerPairs = taskAssignments.map(assignment => ({
-    task_id: (assignment.tasks as any).id,
-    volunteer_id: (assignment.volunteers as any).id
+  const taskVolunteerPairs = typedTaskAssignments.map((assignment) => ({
+    task_id: assignment.tasks.id,
+    volunteer_id: assignment.volunteers.id
   }));
 
   const { data: sentEmails, error: trackingError } = await supabaseServiceRole
@@ -115,7 +134,7 @@ async function sendTaskReminders() {
 
   const sentTodaySet = new Set<string>();
   if (sentEmails) {
-    sentEmails.forEach(record => {
+    (sentEmails as EmailTrackingRecord[]).forEach((record) => {
       const recordDate = new Date(record.email_sent_date)
         .toISOString()
         .split('T')[0];
@@ -126,9 +145,9 @@ async function sendTaskReminders() {
   }
 
   // Step 3: Filter assignments that haven't received an email today
-  const assignmentsToEmail = taskAssignments.filter(assignment => {
-    const taskId = (assignment.tasks as any).id;
-    const volunteerId = (assignment.volunteers as any).id;
+  const assignmentsToEmail = typedTaskAssignments.filter((assignment) => {
+    const taskId = assignment.tasks.id;
+    const volunteerId = assignment.volunteers.id;
     return !sentTodaySet.has(`${taskId}-${volunteerId}`);
   });
 
@@ -154,8 +173,8 @@ async function sendTaskReminders() {
 
   for (const assignment of assignmentsToEmail) {
     try {
-      const task = assignment.tasks as any;
-      const volunteer = assignment.volunteers as any;
+      const task = assignment.tasks;
+      const volunteer = assignment.volunteers;
 
       // Send email via Brevo
       const messageId = await sendTaskReminderEmail(
@@ -195,8 +214,8 @@ async function sendTaskReminders() {
     } catch (emailError) {
       const error = emailError as Error;
       console.error('Error sending email:', error.message);
-      const task = assignment.tasks as any;
-      const volunteer = assignment.volunteers as any;
+      const task = assignment.tasks;
+      const volunteer = assignment.volunteers;
       emailResults.push({
         success: false,
         task_id: task.id,

@@ -9,6 +9,20 @@ interface Volunteer {
   profile_image_url?: string;
 }
 
+interface TaskAssignmentRow {
+  volunteer_id: string;
+  volunteers: Volunteer | Volunteer[] | null;
+}
+
+interface TaskRow {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  status: string;
+  task_assignments?: TaskAssignmentRow[];
+}
+
 interface EditTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,12 +77,22 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
       return;
     }
 
-    setTitle(task.title || '');
-    setDescription(task.description || '');
-    setDueDate(task.due_date || '');
-    setStatus(task.status || 'Pending');
+    const typedTask = task as unknown as TaskRow;
 
-    const assigned = task.task_assignments?.map((ta: any) => ta.volunteers) || [];
+    setTitle(typedTask.title || '');
+    setDescription(typedTask.description || '');
+    setDueDate(typedTask.due_date || '');
+    setStatus(typedTask.status || 'Pending');
+
+    const assigned = (typedTask.task_assignments ?? [])
+      .map((ta) => {
+        if (!ta.volunteers) {
+          return null;
+        }
+
+        return Array.isArray(ta.volunteers) ? ta.volunteers[0] : ta.volunteers;
+      })
+      .filter((volunteer): volunteer is Volunteer => volunteer !== null);
     setAssignedVolunteers(assigned);
     
     // Initialize selectedVolunteers with currently assigned volunteer IDs
@@ -91,61 +115,39 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !taskId) return;
+    if (!title.trim() || !taskId || !dueDate.trim()) {
+      setError('Task title and due date are required');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      // Update task
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .update({
-          title: title.trim(),
-          description: description.trim() || null,
-          due_date: dueDate || null,
+      const response = await fetch('/api/update-task', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          title,
+          description,
+          due_date: dueDate,
           status,
+          volunteerIds: selectedVolunteers
         })
-        .eq('id', taskId);
+      });
 
-      if (taskError) throw taskError;
-
-      // Get current assignments
-      const { data: currentAssignments, error: assignError } = await supabase
-        .from('task_assignments')
-        .select('volunteer_id')
-        .eq('task_id', taskId);
-
-      if (assignError) throw assignError;
-
-      const currentVolunteerIds = currentAssignments?.map(a => a.volunteer_id) || [];
-      const newVolunteerIds = selectedVolunteers;
-
-      // Volunteers to add
-      const toAdd = newVolunteerIds.filter(id => !currentVolunteerIds.includes(id));
-      // Volunteers to remove
-      const toRemove = currentVolunteerIds.filter(id => !newVolunteerIds.includes(id));
-
-      // Add new assignments
-      if (toAdd.length > 0) {
-        const assignments = toAdd.map(volunteerId => ({
-          task_id: taskId,
-          volunteer_id: volunteerId,
-        }));
-        const { error: addError } = await supabase
-          .from('task_assignments')
-          .insert(assignments);
-        if (addError) throw addError;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update task');
       }
 
-      // Remove old assignments
-      if (toRemove.length > 0) {
-        const { error: removeError } = await supabase
-          .from('task_assignments')
-          .delete()
-          .eq('task_id', taskId)
-          .in('volunteer_id', toRemove);
-        if (removeError) throw removeError;
+      const data = await response.json();
+
+      if (data.emailsSent > 0) {
+        console.log(
+          `✅ Task updated. ${data.emailsSent} notification email(s) sent to assigned volunteers.`
+        );
       }
 
       onTaskUpdated();
@@ -240,13 +242,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
             
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Due Date
+                Due Date <span className="text-red-400">*</span>
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
             </div>
             
@@ -356,7 +359,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ isOpen, onClose, taskId, 
             </button>
             <button
               type="submit"
-              disabled={loading || !title.trim()}
+              disabled={loading || !title.trim() || !dueDate}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               {loading ? 'Updating...' : 'Update Task'}

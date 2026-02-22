@@ -3,9 +3,24 @@ import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { promises as fs } from 'fs';
 
+interface ImportedVolunteerRow {
+  name?: string;
+  email?: string;
+  role?: string;
+  status?: string;
+  joining_date?: string | number | Date;
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('Starting volunteer import...');
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.' },
+        { status: 500 }
+      );
+    }
 
     // Try to read the XLSX file from multiple possible locations
     const possiblePaths = [
@@ -46,7 +61,7 @@ export async function POST(request: NextRequest) {
     const worksheet = workbook.Sheets[sheetName];
 
     // Convert to JSON
-    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    const jsonData = XLSX.utils.sheet_to_json<ImportedVolunteerRow>(worksheet);
 
     console.log(`Found ${jsonData.length} rows in the Excel file`);
 
@@ -55,7 +70,7 @@ export async function POST(request: NextRequest) {
     const errors = [];
 
     for (let i = 0; i < jsonData.length; i++) {
-      const row = jsonData[i] as any;
+      const row = jsonData[i];
 
       try {
         // Validate required fields
@@ -153,6 +168,13 @@ export async function POST(request: NextRequest) {
 // Optional: GET method to check import status or get sample data
 export async function GET() {
   try {
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Supabase client is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.' },
+        { status: 500 }
+      );
+    }
+
     const { data: volunteers, error } = await supabase
       .from('volunteers')
       .select('id, full_name, email, role, status, joining_date')

@@ -14,7 +14,18 @@ type Volunteer = {
   place: string;
   status: string;
   joining_date: string;
+  photo_url?: string | null;
   last_active_date?: string;
+};
+
+type VolunteerUpdateData = {
+  full_name: string;
+  email: string;
+  role: string;
+  place: string;
+  status: string;
+  joining_date: string;
+  photo_url?: string | null;
 };
 
 export default function VolunteersPage() {
@@ -35,19 +46,34 @@ export default function VolunteersPage() {
     setLoading(true);
     setError('');
     try {
-      const { data, error } = await supabase
+      // Try to fetch with photo_url, fallback to without if column doesn't exist
+      const { data: initialData, error } = await supabase
         .from("volunteers")
-        .select("id, full_name, email, role, place, status, joining_date")
+        .select("id, full_name, email, role, place, status, joining_date, photo_url")
         .order("joining_date", { ascending: false });
 
-      if (error) throw error;
+      let data = initialData;
+
+      // If photo_url column doesn't exist, fetch without it
+      if (error && error.message.includes('photo_url')) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("volunteers")
+          .select("id, full_name, email, role, place, status, joining_date")
+          .order("joining_date", { ascending: false });
+
+        if (fallbackError) throw fallbackError;
+        // Add photo_url: null to each item for type compatibility
+        data = (fallbackData || []).map(v => ({ ...v, photo_url: null }));
+      } else if (error) {
+        throw error;
+      }
 
       // Fetch last active date for each volunteer
       const volunteersWithLastActive = await Promise.all(
         (data || []).map(async (volunteer) => {
           if (volunteer.status === 'Inactive') {
             // Get the most recent task assignment date
-            const { data: lastAssignment, error: assignmentError } = await supabase
+            const { data: lastAssignment } = await supabase
               .from('task_assignments')
               .select('assigned_at')
               .eq('volunteer_id', volunteer.id)
@@ -85,21 +111,57 @@ export default function VolunteersPage() {
   };
 
   const handleSave = async (updatedVolunteer: Volunteer) => {
-    const { error } = await supabase
-      .from("volunteers")
-      .update({
+    try {
+      const updateData: VolunteerUpdateData = {
         full_name: updatedVolunteer.full_name,
         email: updatedVolunteer.email,
         role: updatedVolunteer.role,
         place: updatedVolunteer.place,
         status: updatedVolunteer.status,
-      })
-      .eq("id", updatedVolunteer.id);
+        joining_date: updatedVolunteer.joining_date,
+      };
 
-    if (error) {
-      console.error("Error updating volunteer:", error);
-    } else {
-      fetchVolunteers();
+      // Try to include photo_url if it exists
+      if (updatedVolunteer.photo_url !== undefined) {
+        updateData.photo_url = updatedVolunteer.photo_url;
+      }
+
+      const { error } = await supabase
+        .from("volunteers")
+        .update(updateData)
+        .eq("id", updatedVolunteer.id);
+
+      if (error) {
+        // If error is about photo_url column not existing, try without it
+        if (error.message.includes('photo_url')) {
+          const { error: retryError } = await supabase
+            .from("volunteers")
+            .update({
+              full_name: updatedVolunteer.full_name,
+              email: updatedVolunteer.email,
+              role: updatedVolunteer.role,
+              place: updatedVolunteer.place,
+              status: updatedVolunteer.status,
+              joining_date: updatedVolunteer.joining_date,
+            })
+            .eq("id", updatedVolunteer.id);
+          
+          if (retryError) {
+            console.error("Error updating volunteer:", retryError.message);
+            alert(`Failed to update: ${retryError.message}`);
+          } else {
+            fetchVolunteers();
+          }
+        } else {
+          console.error("Error updating volunteer:", error.message);
+          alert(`Failed to update: ${error.message}`);
+        }
+      } else {
+        fetchVolunteers();
+      }
+    } catch (err) {
+      console.error("Exception:", err);
+      alert('Failed to save volunteer');
     }
   };
 
@@ -191,6 +253,7 @@ export default function VolunteersPage() {
                     status={v.status}
                     joiningDate={v.joining_date}
                     email={v.email}
+                    photoUrl={v.photo_url}
                     lastActiveDate={v.last_active_date}
                     onEdit={handleEdit}
                     onDelete={handleDelete}

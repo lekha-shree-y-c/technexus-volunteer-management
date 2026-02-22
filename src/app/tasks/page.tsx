@@ -19,17 +19,35 @@ type Task = {
   }[];
 };
 
+type TaskAssignmentRow = {
+  volunteer_id: string;
+  volunteers: {
+    id: string;
+    full_name: string;
+    profile_image_url?: string | null;
+  } | {
+    id: string;
+    full_name: string;
+    profile_image_url?: string | null;
+  }[] | null;
+};
+
+type TaskQueryRow = {
+  id: string;
+  title: string;
+  description?: string;
+  due_date?: string;
+  status: string;
+  task_assignments?: TaskAssignmentRow[];
+};
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const fetchTasks = async () => {
+  async function fetchTasks() {
     const { data, error } = await supabase
       .from("tasks")
       .select(`
@@ -52,17 +70,34 @@ export default function TasksPage() {
     if (error) {
       console.error("Error fetching tasks:", error);
     } else {
-      const formattedTasks = data?.map(task => ({
+      const getVolunteerFromAssignment = (assignment: TaskAssignmentRow) => {
+        const relation = assignment.volunteers;
+        if (!relation) {
+          return null;
+        }
+
+        return Array.isArray(relation) ? relation[0] : relation;
+      };
+
+      const formattedTasks = ((data ?? []) as unknown as TaskQueryRow[]).map((task) => ({
         ...task,
-        assigned_volunteers: task.task_assignments?.map((ta: any) => ({
-          id: ta.volunteers.id,
-          name: ta.volunteers.full_name,
-          avatarUrl: ta.volunteers.profile_image_url,
-        })) || []
-      })) || [];
+        assigned_volunteers: (task.task_assignments ?? [])
+          .map(getVolunteerFromAssignment)
+          .filter((volunteer): volunteer is { id: string; full_name: string; profile_image_url?: string | null } => Boolean(volunteer))
+          .map((volunteer) => ({
+            id: volunteer.id,
+            name: volunteer.full_name,
+            avatarUrl: volunteer.profile_image_url ?? undefined,
+          }))
+      }));
       setTasks(formattedTasks);
     }
-  };
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTasks();
+  }, []);
 
   const handleToggleComplete = async (id: string) => {
     const task = tasks.find(t => t.id === id);

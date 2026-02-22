@@ -9,6 +9,7 @@ interface VolunteerCardProps {
   status: string;
   joiningDate: string;
   email: string;
+  photoUrl?: string | null;
   lastActiveDate?: string;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -22,6 +23,7 @@ const VolunteerCard: React.FC<VolunteerCardProps> = ({
   status,
   joiningDate,
   email,
+  photoUrl,
   lastActiveDate,
   onEdit,
   onDelete,
@@ -41,8 +43,16 @@ const VolunteerCard: React.FC<VolunteerCardProps> = ({
       <div className="p-4 sm:p-6">
         {/* Avatar + Name Section */}
         <div className="flex items-start mb-4 gap-3 sm:gap-4">
-          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full ${getInitialBgColor(name.charAt(0))} flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0`}>
-            {name.charAt(0).toUpperCase()}
+          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full ${photoUrl ? '' : getInitialBgColor(name.charAt(0))} flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0 overflow-hidden border border-slate-600/50`}>
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              name.charAt(0).toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-base font-semibold text-white truncate">{name}</h3>

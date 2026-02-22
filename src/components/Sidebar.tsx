@@ -18,6 +18,11 @@ export default function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Hide sidebar on login page
+  if (pathname === '/login') {
+    return null;
+  }
+
   const isActive = (path: string) => pathname === path;
 
   const navItems = [
