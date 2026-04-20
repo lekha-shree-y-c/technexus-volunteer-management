@@ -8,6 +8,9 @@ const DEMO_CREDENTIALS = {
   full_name: 'Admin',
 };
 
+const normalizeUsername = (value: string) => value.trim().toLowerCase();
+const normalizePassword = (value: string) => value.trim();
+
 interface AuthenticatedAdmin {
   id: string;
   username: string;
@@ -58,8 +61,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const trimmedUsername = username.trim().toLowerCase();
-    const trimmedPassword = password.trim();
+    const trimmedUsername = normalizeUsername(username);
+    const trimmedPassword = normalizePassword(password);
     const envUsername = process.env.ADMIN_USERNAME?.trim().toLowerCase();
     const envPassword = process.env.ADMIN_PASSWORD?.trim();
     const envFullName = process.env.ADMIN_FULL_NAME?.trim() || 'Admin User';
@@ -109,8 +112,8 @@ export async function POST(request: NextRequest) {
     }
 
     const demoMatch =
-      trimmedUsername === DEMO_CREDENTIALS.username &&
-      trimmedPassword === DEMO_CREDENTIALS.password;
+      trimmedUsername === normalizeUsername(DEMO_CREDENTIALS.username) &&
+      trimmedPassword === normalizePassword(DEMO_CREDENTIALS.password);
 
     if (demoMatch) {
       console.log('[Login] Authentication successful via demo credentials');
