@@ -56,7 +56,12 @@ const VolunteerCard: React.FC<VolunteerCardProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm sm:text-base font-semibold text-white truncate">{name}</h3>
-            <p className="text-xs sm:text-sm text-slate-400 truncate">{role}</p>
+            <p
+              className="text-xs sm:text-sm text-slate-400 overflow-hidden break-words"
+              style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}
+            >
+              {role}
+            </p>
           </div>
         </div>
 
