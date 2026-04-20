@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 
 // Demo credentials for testing (replace with Supabase auth later)
 const DEMO_CREDENTIALS = {
-  username: 'admin',
-  password: 'password123',
-  full_name: 'Admin User',
+  username: 'Nexus',
+  password: 'Nexus@73521',
+  full_name: 'Admin',
 };
 
 interface AuthenticatedAdmin {
