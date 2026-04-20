@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const DEMO_CREDENTIALS = {
   username: 'Nexus',
   password: 'Nexus@73521',
-  full_name: 'Admin',
+  full_name: 'Admin User',
 };
 
 const normalizeUsername = (value: string) => value.trim().toLowerCase();
